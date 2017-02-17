@@ -4,13 +4,18 @@ import theano
 import theano.tensor as T
 import lasagne
 
+import numpy as np
+
 from lasagne.layers import InputLayer
 from lasagne.layers import Conv2DLayer
 from lasagne.layers import Deconv2DLayer
 from lasagne.layers import ConcatLayer
+from lasagne.layers import TransformerLayer
 
 from lasagne.nonlinearities import LeakyRectify
 from lasagne.nonlinearities import linear
+import cv2
+
 
 leaky_rectify = LeakyRectify(0.1)
 
@@ -32,7 +37,9 @@ def upsample(input_layer, **kwargs):
         input_layer, num_filters=2, filter_size=4, stride=2,
         crop=1, b=None, nonlinearity=linear, **kwargs)
 
-def build_model():
+def build_model(weights):
+    weights = np.load(weights)['arr_0'][()]
+
     net = dict()
 
     net['input_1'] = InputLayer([None, 3, 384, 512])
@@ -47,14 +54,20 @@ def build_model():
     net['conv3'] = leaky_conv(net['conv2'], num_filters=256, filter_size=5, stride=2)
     net['conv3_1'] = leaky_conv(net['conv3'], num_filters=256, filter_size=3, stride=1)
     
-    net['conv4'] = leaky_conv(net['conv3_1'], num_filters=512, filter_size=1, stride=2)
-    net['conv4_1'] = leaky_conv(net['conv4'], num_filters=512, filter_size=1, stride=1)
+    net['conv4'] = leaky_conv(net['conv3_1'], num_filters=512, filter_size=3, stride=2)
+    net['conv4_1'] = leaky_conv(net['conv4'], num_filters=512, filter_size=3, stride=1)
     
-    net['conv5'] = leaky_conv(net['conv4_1'], num_filters=512, filter_size=1, stride=2)
-    net['conv5_1'] = leaky_conv(net['conv5'], num_filters=512, filter_size=1, stride=1)
+    net['conv5'] = leaky_conv(net['conv4_1'], num_filters=512, filter_size=3, stride=2)
+    net['conv5_1'] = leaky_conv(net['conv5'], num_filters=512, filter_size=3, stride=1)
 
-    net['conv6'] = leaky_conv(net['conv5_1'], num_filters=1024, filter_size=1, stride=2)
-    net['conv6_1'] = leaky_conv(net['conv6'], num_filters=1024, filter_size=1, stride=1)
+    net['conv6'] = leaky_conv(net['conv5_1'], num_filters=1024, filter_size=3, stride=2)
+    net['conv6_1'] = leaky_conv(net['conv6'], num_filters=1024, filter_size=3, stride=1)
+
+    for layer_name in ['conv1', 'conv2', 'conv3', 'conv3_1', 'conv4', 'conv4_1', 'conv5', 'conv5_1', 'conv6', 'conv6_1']:
+        print(layer_name, net[layer_name].W.shape.eval(), weights[layer_name][0].shape)
+        print(layer_name, net[layer_name].b.shape.eval(), weights[layer_name][1].shape)
+        net[layer_name].W.set_value(weights[layer_name][0])
+        net[layer_name].b.set_value(weights[layer_name][1])
 
     net['flow6'] = flow(net['conv6_1'])
     net['flow6_up'] = upsample(net['flow6'])
@@ -78,12 +91,56 @@ def build_model():
     net['concat2'] = ConcatLayer([net['conv2'], net['deconv2'], net['flow3_up']])
     net['flow2'] = flow(net['concat2'])
 
+    # TODO: Should be upsampled before 'flow1' to 384x512
+
+    net['flow1'] = flow(net['flow2'])
+
+    for layer_name in ['deconv5', 'deconv4', 'deconv3', 'deconv2']:
+        net[layer_name].W.set_value(weights[layer_name][0])
+
+    upsample_map = {
+        'flow6_up': 'upsample_flow6to5',
+        'flow5_up': 'upsample_flow5to4',
+        'flow4_up': 'upsample_flow4to3',
+        'flow3_up': 'upsample_flow3to2'
+    }
+
+    for layer_name in ['flow6_up', 'flow5_up', 'flow4_up', 'flow3_up']:
+        net[layer_name].W.set_value(weights[upsample_map[layer_name]][0])
+
+    flow_map = {
+        'flow6': 'Convolution1',
+        'flow5': 'Convolution2',
+        'flow4': 'Convolution3',
+        'flow3': 'Convolution4',
+        'flow2': 'Convolution5',
+        'flow1': 'Convolution6'
+    }
+
+    for layer_name in ['flow6', 'flow5', 'flow4', 'flow3', 'flow2', 'flow1']:
+        net[layer_name].W.set_value(weights[flow_map[layer_name]][0])
+
     return net
+
+def switch_channels(images):
+    return images.transpose(0, 3, 1, 2)
 
 
 if __name__ == '__main__':
-    net = build_model()
+    net = build_model('flownets.npz')
 
     input_vars = lasagne.layers.get_output([net['input_1'], net['input_2']])
 
     flow = theano.function(input_vars, lasagne.layers.get_output(net['flow2'], deterministic=True))
+
+    frame1_path = 'data/frame-000967.color.png'
+    frame2_path = 'data/frame-000977.color.png'
+
+    frame1 = cv2.resize(cv2.imread(frame1_path, cv2.IMREAD_COLOR), (384, 512))
+    frame2 = cv2.resize(cv2.imread(frame2_path, cv2.IMREAD_COLOR), (384, 512))
+
+    frame1 = switch_channels(frame1.reshape(1, 384, 512, 3)).astype(np.float32)
+    frame2 = switch_channels(frame2.reshape(1, 384, 512, 3)).astype(np.float32)
+
+    print(frame1.shape, frame2.shape)
+    print(flow(frame1, frame2).shape)
