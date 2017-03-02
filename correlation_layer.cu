@@ -425,23 +425,3 @@ int APPLY_SPECIFIC(Backward_gpu)(
 }
 
 // -----------------------------------------------------------------------------
-
-int APPLY_SPECIFIC(Backward_gpu1)(
-  CudaNdarray* bottom0,
-  CudaNdarray* bottom1,
-  CudaNdarray* rbot0,
-  CudaNdarray* rbot1,
-  CudaNdarray* out_grad,
-  CudaNdarray** bottom0_grad,
-  CudaNdarray** bottom1_grad)
-{
-  int count = CudaNdarray_SIZE(bottom0);
-
-  CudaNdarray_prep_output(bottom0_grad, 4, CudaNdarray_DIMS(bottom0));
-  CudaNdarray_prep_output(bottom1_grad, 4, CudaNdarray_DIMS(bottom1));
-
-  cudaMemset((*bottom0_grad)->devdata, Dtype(0.), count);
-  cudaMemset((*bottom1_grad)->devdata, Dtype(0.), count);
-
-  return 0;
-}

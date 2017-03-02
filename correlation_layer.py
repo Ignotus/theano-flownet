@@ -14,7 +14,7 @@ class CorrelationBaseOp(GpuOp, COp):
               'neighborhood_grid_width')
 
   func_file = "./correlation_layer.cu"
-  
+
   def __init__(self, func_name, bottom_shape, **kwargs):
     super(CorrelationBaseOp, self).__init__(self.func_file, func_name)
 
@@ -56,7 +56,7 @@ class CorrelationBaseOp(GpuOp, COp):
             ('MAX_DISPLACEMENT', str(self.max_displacement)),
             ('NEIGHBORHOOD_GRID_RADIUS', str(self.neighborhood_grid_radius)),
             ('NEIGHBORHOOD_GRID_WIDTH', str(self.neighborhood_grid_width))]
-  
+
   def __eq__(self, other):
       return (type(self) == type(other) and
               self.pad_size == other.pad_size and
@@ -77,7 +77,7 @@ class CorrelationBaseOp(GpuOp, COp):
 
   def c_code_cache_version(self):
     return (1,)
-      
+
 
 class CorrelationOp(CorrelationBaseOp):
   func_name = "APPLY_SPECIFIC(Forward_gpu)"
