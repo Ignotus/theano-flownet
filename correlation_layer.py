@@ -30,8 +30,8 @@ class CorrelationBaseOp(GpuOp, COp):
     self.kernel_radius = (self.kernel_size - 1) // 2
     border_size = self.max_displacement + self.kernel_radius
 
-    paddedbottomheight = self.bottom_shape[2] + 2 * self.pad_size;
-    paddedbottomwidth = self.bottom_shape[3] + 2 * self.pad_size;
+    paddedbottomheight = self.bottom_shape[2] + 2 * self.pad_size
+    paddedbottomwidth = self.bottom_shape[3] + 2 * self.pad_size
 
     self.top_width = int(np.ceil(float(paddedbottomwidth - border_size * 2) / float(self.stride1)))
     self.top_height = int(np.ceil(float(paddedbottomheight - border_size * 2) / float(self.stride1)))

@@ -10,11 +10,51 @@ from lasagne.layers import InputLayer
 from lasagne.layers import Conv2DLayer
 from lasagne.layers import Deconv2DLayer
 from lasagne.layers import ConcatLayer
-from lasagne.layers import TransformerLayer
+from lasagne.layers import ExpressionLayer
 
+from lasagne.layers import MergeLayer
 from lasagne.nonlinearities import LeakyRectify
 from lasagne.nonlinearities import linear
 import cv2
+
+
+class CorrelationLayer(MergeLayer):
+    def __init__(self, first_layer, second_layer,
+                 pad_size=20, kernel_size=1, stride1=1, stride2=2,
+                 max_displacement=20, **kwargs):
+        super(CorrelationLayer, self).__init__(
+            [first_layer, second_layer], **kwargs)
+
+        self.pad_size = 20
+        self.kernel_size = 1
+        self.stride1 = 1
+        self.stride2 = 2
+        self.max_displacement = 20
+
+    def get_output_shape_for(self, input_shapes):
+        # This fake op is just for inferring shape
+        op = CorrelationOp(
+            intput_shapes[0],
+            pad_size=self.pad_size,
+            kernel_size=self.kernel_size,
+            stride1=self.stride1,
+            stride2=self.stride2,
+            max_displacement=self.max_displacement)
+
+        return (intput_shapes[0][0], op.top_channels, op.top_height, op.top_width)
+
+    def get_output_for(self, inputs, **kwargs):
+        from correlation_layer import CorrelationOp
+
+        op = CorrelationOp(
+            intputs[0].shape,
+            pad_size=self.pad_size,
+            kernel_size=self.kernel_size,
+            stride1=self.stride1,
+            stride2=self.stride2,
+            max_displacement=self.max_displacement)
+
+        return op(*inputs)[2]
 
 
 leaky_rectify = LeakyRectify(0.1)
@@ -43,16 +83,35 @@ def build_model(weights):
     net = dict()
 
     net['input_1'] = InputLayer([None, 3, 384, 512])
-
     net['input_2'] = InputLayer([None, 3, 384, 512])
 
-    net['input'] = ConcatLayer([net['input_1'], net['input_2']])
-
-    net['conv1'] = leaky_conv(net['input'], num_filters=64, filter_size=7, stride=2)
-    net['conv2'] = leaky_conv(net['conv1'], num_filters=128, filter_size=5, stride=2)
+    net['conv1'] = leaky_conv(
+        net['input_1'], num_filters=64, filter_size=7, stride=2)
+    net['conv1b'] = leaky_conv(
+        net['input_2'], num_filters=64, filter_size=7, stride=2,
+        W=net['conv1'].W, b=net['conv1'].b)
     
-    net['conv3'] = leaky_conv(net['conv2'], num_filters=256, filter_size=5, stride=2)
-    net['conv3_1'] = leaky_conv(net['conv3'], num_filters=256, filter_size=3, stride=1)
+    net['conv2'] = leaky_conv(
+        net['conv1'], num_filters=128, filter_size=5, stride=2)
+    net['conv2b'] = leaky_conv(
+        net['conv1b'], num_filters=128, filter_size=5, stride=2,
+        W=net['conv2'].W, b=net['conv2'].b)
+    
+    net['conv3'] = leaky_conv(
+        net['conv2'], num_filters=256, filter_size=5, stride=2)
+    net['conv3b'] = leaky_conv(
+        net['conv2b'], num_filters=256, filter_size=5, stride=2,
+        W=net['conv3'].W, b=net['conv3'].b)
+
+    net['corr'] = CorrelationLayer(net['conv3'], net['conv3b'])
+    # Adding leaky relu on top
+    net['corr'] = ExpressionLayer(net['corr'], lambda x: T.nnet.relu(x, 0.1))
+
+    net['conv_redir'] = leaky_conv(net['conv3a'], num_filters=32, filter_size=1, stride=1, pad=0)
+
+    net['concat'] = ConcatLayer([net['corr'], net['conv_redir']])
+
+    net['conv3_1'] = leaky_conv(net['concat'], num_filters=256, filter_size=3, stride=1)
     
     net['conv4'] = leaky_conv(net['conv3_1'], num_filters=512, filter_size=3, stride=2)
     net['conv4_1'] = leaky_conv(net['conv4'], num_filters=512, filter_size=3, stride=1)
@@ -63,7 +122,7 @@ def build_model(weights):
     net['conv6'] = leaky_conv(net['conv5_1'], num_filters=1024, filter_size=3, stride=2)
     net['conv6_1'] = leaky_conv(net['conv6'], num_filters=1024, filter_size=3, stride=1)
 
-    for layer_name in ['conv1', 'conv2', 'conv3', 'conv3_1', 'conv4', 'conv4_1', 'conv5', 'conv5_1', 'conv6', 'conv6_1']:
+    for layer_name in ['conv1', 'conv2', 'conv3', 'conv_redir', 'conv3_1', 'conv4', 'conv4_1', 'conv5', 'conv5_1', 'conv6', 'conv6_1']:
         print(layer_name, net[layer_name].W.shape.eval(), weights[layer_name][0].shape)
         print(layer_name, net[layer_name].b.shape.eval(), weights[layer_name][1].shape)
         net[layer_name].W.set_value(weights[layer_name][0])
@@ -127,7 +186,7 @@ def switch_channels(images):
 
 
 if __name__ == '__main__':
-    net = build_model('archive/flownets.npz')
+    net = build_model('archive/flownetc.npz')
 
     input_vars = lasagne.layers.get_output([net['input_1'], net['input_2']])
 

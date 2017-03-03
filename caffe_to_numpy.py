@@ -10,6 +10,7 @@ import caffe
 from math import ceil
 
 if __name__ == '__main__':
+    model_type = sys.argv[1]
     height = 384
     width = 512
     divisor = 64.
@@ -41,7 +42,7 @@ if __name__ == '__main__':
     caffe.set_device(0)
 
     deployFile = "tmp/deploy.prototxt"
-    caffemodel = "model/flownets.caffemodel"
+    caffemodel = "model/flownet%s.caffemodel" % model_type
 
     net = caffe.Net(deployFile, caffemodel, caffe.TEST)
    
@@ -54,4 +55,4 @@ if __name__ == '__main__':
 
         weights[key] = [val[i].data for i in range(len(val))]
 
-    np.savez('flownets.npz', weights)
+    np.savez('flownet%s.npz' % model_type, weights)
