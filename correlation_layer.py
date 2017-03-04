@@ -9,9 +9,9 @@ from theano.sandbox.cuda import as_cuda_ndarray_variable, GpuOp
 
 class CorrelationBaseOp(GpuOp, COp):
   __props__ = ('top_width', 'top_height', 'top_channels', 'pad_size',
-              'kernel_radius', 'kernel_size', 'stride1', 'stride2',
-              'max_displacement', 'neighborhood_grid_radius',
-              'neighborhood_grid_width')
+               'kernel_radius', 'kernel_size', 'stride1', 'stride2',
+               'max_displacement', 'neighborhood_grid_radius',
+               'neighborhood_grid_width')
 
   func_file = "./correlation_layer.cu"
 
