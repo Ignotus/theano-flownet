@@ -311,7 +311,6 @@ int APPLY_SPECIFIC(Forward_gpu)(
   CudaNdarray_prep_output(rbot0, 4, dims);
   CudaNdarray_prep_output(rbot1, 4, dims);
 
-
   // Those capitalized parameters are taken from theano
   const int topcount = TOP_WIDTH * TOP_HEIGHT * TOP_CHANNELS;
 
@@ -375,8 +374,6 @@ int APPLY_SPECIFIC(Backward_gpu)(
   const int channels = CudaNdarray_DIMS(bottom0)[1];
   const int height = CudaNdarray_DIMS(bottom0)[2];
   const int width = CudaNdarray_DIMS(bottom0)[3];
-
-
 
   const int paddedheight = height + 2 * PAD_SIZE;
   const int paddedwidth = width + 2 * PAD_SIZE;

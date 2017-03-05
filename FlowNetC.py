@@ -12,6 +12,7 @@ from lasagne.layers import ConcatLayer
 from lasagne.layers import ExpressionLayer
 from lasagne.layers import MergeLayer
 from lasagne.nonlinearities import LeakyRectify
+
 import cv2
 
 from correlation_layer import CorrelationOp
@@ -20,7 +21,7 @@ from FlowNetCommon import *
 
 
 class CorrelationLayer(MergeLayer):
-    def __init__(self, first_layer, second_layer, bottom_shape,
+    def __init__(self, first_layer, second_layer,
                  pad_size=20, kernel_size=1, stride1=1, stride2=2,
                  max_displacement=20, **kwargs):
         super(CorrelationLayer, self).__init__(
@@ -31,7 +32,7 @@ class CorrelationLayer(MergeLayer):
         self.stride1 = 1
         self.stride2 = 2
         self.max_displacement = 20
-        self.bottom_shape = bottom_shape
+        self.bottom_shape = lasagne.layers.get_output_shape(first_layer)
 
     def get_output_shape_for(self, input_shapes):
         # This fake op is just for inferring shape
@@ -82,10 +83,8 @@ def build_model(weights):
         net['conv2b'], num_filters=256, filter_size=5, stride=2,
         W=net['conv3'].W, b=net['conv3'].b)
 
-    net['corr'] = CorrelationLayer(net['conv3'], net['conv3b'],
-                                   lasagne.layers.get_output_shape(net['conv3']))
-    # Adding leaky relu on top
-    net['corr'] = ExpressionLayer(net['corr'], lambda x: T.nnet.relu(x, 0.1))
+    net['corr'] = CorrelationLayer(net['conv3'], net['conv3b'])
+    net['corr'] = ExpressionLayer(net['corr'], leaky_rectify)
 
     net['conv_redir'] = leaky_conv(net['conv3'], num_filters=32, filter_size=1, stride=1, pad=0)
 
@@ -118,7 +117,9 @@ if __name__ == '__main__':
 
     input_vars = lasagne.layers.get_output([net['input_1'], net['input_2']])
 
-    flow = theano.function(input_vars, lasagne.layers.get_output([net['flow2'], net['corr']], deterministic=True))
+    flow = theano.function(
+        input_vars,
+        lasagne.layers.get_output([net['flow2'], net['conv3'], net['conv3b'], net['corr']], deterministic=True))
 
     frame1_path = 'data/frame-000967.color.png'
     frame2_path = 'data/frame-000977.color.png'
@@ -129,10 +130,19 @@ if __name__ == '__main__':
     frame1 = switch_channels(frame1.reshape(1, 384, 512, 3)).astype(np.float32)
     frame2 = switch_channels(frame2.reshape(1, 384, 512, 3)).astype(np.float32)
 
-    print(frame1.shape, frame2.shape)
-    flow_res, corr = flow(frame1, frame2)
+    # Scale pixels to [0, 1]
+    frame1 *= 0.00392156862745
+    frame2 *= 0.00392156862745
 
-    print(corr)
-    print(flow_res.shape)
+    mean = np.array([0.378156, 0.394731, 0.400841], dtype=np.float32).reshape(1, 3, 1, 1)
+
+    frame1 -= mean
+    frame2 -= mean
+
+    print(frame1.shape, frame2.shape)
+    flow_res, conv3, conv3b, corr = flow(frame1, frame2)
+
+    np.save('conv3.npy', conv3)
+    np.save('conv3b.npy', conv3b)
 
     np.save('flow.npy', flow_res)

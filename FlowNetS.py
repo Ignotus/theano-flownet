@@ -68,6 +68,15 @@ if __name__ == '__main__':
     frame1 = switch_channels(frame1.reshape(1, 384, 512, 3)).astype(np.float32)
     frame2 = switch_channels(frame2.reshape(1, 384, 512, 3)).astype(np.float32)
 
+    # Scale pixels to [0, 1]
+    frame1 *= 0.00392156862745
+    frame2 *= 0.00392156862745
+
+    mean = np.array([0.378156, 0.394731, 0.400841], dtype=np.float32).reshape(1, 3, 1, 1)
+
+    frame1 -= mean
+    frame2 -= mean
+
     np.save('frame1.npy', frame1)
     np.save('frame2.npy', frame2)
 
