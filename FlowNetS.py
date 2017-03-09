@@ -7,10 +7,8 @@ import lasagne
 import numpy as np
 
 from lasagne.layers import InputLayer
-from lasagne.layers import Conv2DLayer
 from lasagne.layers import ConcatLayer
 
-from lasagne.nonlinearities import LeakyRectify
 import cv2
 
 from FlowNetCommon import *
@@ -20,9 +18,13 @@ def build_model(weights):
 
     net = dict()
 
-    net['input_1'] = InputLayer([None, 3, 384, 512])
+    # T.nnet.abstract_conv.bilinear_upsampling doesn't work properly if not to
+    # specify a batch size
+    batch_size = 1
 
-    net['input_2'] = InputLayer([None, 3, 384, 512])
+    net['input_1'] = InputLayer([batch_size, 3, 384, 512])
+
+    net['input_2'] = InputLayer([batch_size, 3, 384, 512])
 
     net['input'] = ConcatLayer([net['input_1'], net['input_2']])
 
@@ -45,7 +47,7 @@ def build_model(weights):
         layer_name = 'conv' + layer_id
         print(layer_name, net[layer_name].W.shape.eval(), weights[layer_name][0].shape)
         print(layer_name, net[layer_name].b.shape.eval(), weights[layer_name][1].shape)
-        net[layer_name].W.set_value(weights[layer_name][0])
+        net[layer_name].W.set_value(weights[layer_name][0][:,:,::-1,::-1])
         net[layer_name].b.set_value(weights[layer_name][1])
 
     refine_flow(net, weights)
@@ -55,32 +57,4 @@ def build_model(weights):
 if __name__ == '__main__':
     net = build_model('archive/flownets.npz')
 
-    input_vars = lasagne.layers.get_output([net['input_1'], net['input_2']])
-
-    flow = theano.function(input_vars, lasagne.layers.get_output(net['flow2'], deterministic=True))
-
-    frame1_path = 'data/frame-000967.color.png'
-    frame2_path = 'data/frame-000977.color.png'
-
-    frame1 = cv2.resize(cv2.imread(frame1_path, cv2.IMREAD_COLOR), (512, 384))
-    frame2 = cv2.resize(cv2.imread(frame2_path, cv2.IMREAD_COLOR), (512, 384))
-
-    frame1 = switch_channels(frame1.reshape(1, 384, 512, 3)).astype(np.float32)
-    frame2 = switch_channels(frame2.reshape(1, 384, 512, 3)).astype(np.float32)
-
-    # Scale pixels to [0, 1]
-    frame1 *= 0.00392156862745
-    frame2 *= 0.00392156862745
-
-    mean = np.array([0.378156, 0.394731, 0.400841], dtype=np.float32).reshape(1, 3, 1, 1)
-
-    frame1 -= mean
-    frame2 -= mean
-
-    np.save('frame1.npy', frame1)
-    np.save('frame2.npy', frame2)
-
-    print(frame1.shape, frame2.shape)
-    print(flow(frame1, frame2).shape)
-
-    np.save('flow.npy', flow(frame1, frame2))
+    run(net)

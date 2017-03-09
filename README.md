@@ -1,1 +1,27 @@
 # theano-flownet
+
+This is a port of the caffe implementation of the ICCV'15 paper "[FlowNet: Learning
+Optical Flow with Convolutional Networks](http://lmb.informatik.uni-freiburg.de/Publications/2015/DFIB15/flownet.pdf)" by Dosovitskiy et al to Theano and Lasagne. It contains both
+FlowNetS and FlowNetC models and a port of the correlation layer.
+
+### Requirements
+
+* flownet-caffe (for the weight conversion script only). Sample
+[Makefile.config](Makefile.config) is provided.
+* Theano 0.8.2
+* Lasagne
+* numpy
+* [flow-io-opencv](https://github.com/davidstutz/flow-io-opencv) can be used to generate optical flow
+visualization from *.flo outputs
+
+### Setup
+
+`caffe_to_numpy.py` script can be used to convert caffe models to the npz format.
+caffemodel and prototxt files should be placed in the model subdirectory.
+
+### Running
+
+```bash
+python FlowNetS.py
+python FlowNetC.py
+```

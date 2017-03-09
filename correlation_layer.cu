@@ -311,6 +311,10 @@ int APPLY_SPECIFIC(Forward_gpu)(
   CudaNdarray_prep_output(rbot0, 4, dims);
   CudaNdarray_prep_output(rbot1, 4, dims);
 
+  cudaMemset((*out)->devdata, Dtype(0.), CudaNdarray_SIZE(*out));
+  cudaMemset((*rbot0)->devdata, Dtype(0.), CudaNdarray_SIZE(*rbot0));
+  cudaMemset((*rbot1)->devdata, Dtype(0.), CudaNdarray_SIZE(*rbot1));
+
   // Those capitalized parameters are taken from theano
   const int topcount = TOP_WIDTH * TOP_HEIGHT * TOP_CHANNELS;
 
