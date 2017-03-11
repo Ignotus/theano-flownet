@@ -59,22 +59,23 @@ class BilinearUpscaleLayer(Layer):
 leaky_rectify = LeakyRectify(0.1)
 
 def leaky_conv(input_layer, pad='same', **kwargs):
-    return Conv2DLayer(input_layer, nonlinearity=leaky_rectify, pad=pad, **kwargs)
+    return Conv2DLayer(input_layer, nonlinearity=leaky_rectify, pad=pad,
+                       flip_filters=False, **kwargs)
 
 def leaky_deconv(input_layer, **kwargs):
     return Deconv2DLayer(
         input_layer, nonlinearity=leaky_rectify,
-        filter_size=4, stride=2, crop=1, b=None, **kwargs)
+        filter_size=4, stride=2, crop=1, b=None, flip_filters=True, **kwargs)
 
 def upsample(input_layer, **kwargs):
     return Deconv2DLayer(
         input_layer, num_filters=2, filter_size=4, stride=2,
-        crop=1, b=None, nonlinearity=linear, **kwargs)
+        crop=1, b=None, nonlinearity=linear, flip_filters=True, **kwargs)
 
 def flow(input_layer, filter_size=3, pad=1,**kwargs):
     return Conv2DLayer(
         input_layer, num_filters=2, filter_size=filter_size, stride=1,
-        nonlinearity=linear, pad=pad, **kwargs)
+        nonlinearity=linear, pad=pad, flip_filters=False, **kwargs)
 
 def switch_channels(images):
     return images.transpose(0, 3, 1, 2)
@@ -135,7 +136,7 @@ def refine_flow(net, weights):
     }
 
     for layer_name in ['flow6', 'flow5', 'flow4', 'flow3', 'flow2', 'flow1']:
-        net[layer_name].W.set_value(weights[flow_map[layer_name]][0][:,:,::-1,::-1])
+        net[layer_name].W.set_value(weights[flow_map[layer_name]][0])
         net[layer_name].b.set_value(weights[flow_map[layer_name]][1])
 
 
@@ -154,7 +155,7 @@ def write_flow(file_name, flow):
                 f.write(struct.pack('@f', flow[1, y, x]))
 
 
-def run(net):
+def run(net, weights):
     input_vars = lasagne.layers.get_output([net['input_1'], net['input_2']])
 
     flow = theano.function(
@@ -163,15 +164,24 @@ def run(net):
             [net['flow1'], net['flow2'], net['flow3'],
              net['flow4'], net['flow5'], net['flow6']], deterministic=True))
 
-    # frame1_path = 'data/frame-000967.color.png'
-    # frame2_path = 'data/frame-000977.color.png'
+    # Different means in some reason
+    mean_src = weights['img0s_aug'][2]
+    mean_dst = weights['img1s_aug'][2]
 
     for idx in xrange(9):
-        frame1_path = 'data/000000%d-img0.ppm' % idx
-        frame2_path = 'data/000000%d-img1.ppm' % idx
+        if idx == 9:
+            frame1_path = 'data/frame-000967.color.png'
+            frame2_path = 'data/frame-000977.color.png'
+        else:
+            frame1_path = 'data/000000%d-img0.ppm' % idx
+            frame2_path = 'data/000000%d-img1.ppm' % idx
 
-        frame1 = cv2.resize(cv2.imread(frame1_path, cv2.IMREAD_COLOR), (512, 384))
-        frame2 = cv2.resize(cv2.imread(frame2_path, cv2.IMREAD_COLOR), (512, 384))
+        frame1 = cv2.resize(
+            cv2.imread(frame1_path, cv2.IMREAD_COLOR), (512, 384),
+            interpolation=cv2.INTER_AREA)
+        frame2 = cv2.resize(
+            cv2.imread(frame2_path, cv2.IMREAD_COLOR), (512, 384),
+            interpolation = cv2.INTER_AREA)
 
         frame1 = switch_channels(frame1.reshape(1, 384, 512, 3)).astype(np.float32)
         frame2 = switch_channels(frame2.reshape(1, 384, 512, 3)).astype(np.float32)
@@ -180,10 +190,8 @@ def run(net):
         frame1 *= 0.00392156862745
         frame2 *= 0.00392156862745
 
-        mean = np.array([0.378156, 0.394731, 0.400841], dtype=np.float32).reshape(1, 3, 1, 1)
-
-        frame1 -= mean
-        frame2 -= mean
+        # frame1 -= mean_src
+        # frame2 -= mean_dst
 
         flows = flow(frame1, frame2)
 
@@ -191,4 +199,4 @@ def run(net):
             write_flow('output/%07d_flow%d.flo' % (idx, i), flows[i - 1][0])
             np.save('output/%07d_flow%d.npy' % (idx, i), flows[i - 1])
 
-        print(flows[1])
+        print(flows[-1])

@@ -56,8 +56,6 @@ class CorrelationLayer(MergeLayer):
         return op(*inputs)[2]
 
 def build_model(weights):
-    weights = np.load(weights)['arr_0'][()]
-
     net = dict()
 
     # T.nnet.abstract_conv.bilinear_upsampling doesn't work properly if not to
@@ -88,7 +86,8 @@ def build_model(weights):
     net['corr'] = CorrelationLayer(net['conv3'], net['conv3b'])
     net['corr'] = ExpressionLayer(net['corr'], leaky_rectify)
 
-    net['conv_redir'] = leaky_conv(net['conv3'], num_filters=32, filter_size=1, stride=1, pad=0)
+    net['conv_redir'] = leaky_conv(
+        net['conv3'], num_filters=32, filter_size=1, stride=1, pad=0)
 
     net['concat'] = ConcatLayer([net['conv_redir'], net['corr']])
 
@@ -107,7 +106,7 @@ def build_model(weights):
         layer_name = 'conv' + layer_id
         print(layer_name, net[layer_name].W.shape.eval(), weights[layer_name][0].shape)
         print(layer_name, net[layer_name].b.shape.eval(), weights[layer_name][1].shape)
-        net[layer_name].W.set_value(weights[layer_name][0][:,:,::-1,::-1])
+        net[layer_name].W.set_value(weights[layer_name][0])
         net[layer_name].b.set_value(weights[layer_name][1])
 
     refine_flow(net, weights)
@@ -115,6 +114,7 @@ def build_model(weights):
     return net
 
 if __name__ == '__main__':
-    net = build_model('archive/flownetc.npz')
+    weights = np.load('archive/flownetc.npz')['arr_0'][()]
+    net = build_model(weights)
 
-    run(net)
+    run(net, weights)

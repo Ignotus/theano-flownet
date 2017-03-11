@@ -4,6 +4,10 @@ This is a port of the caffe implementation of the ICCV'15 paper "[FlowNet: Learn
 Optical Flow with Convolutional Networks](http://lmb.informatik.uni-freiburg.de/Publications/2015/DFIB15/flownet.pdf)" by Dosovitskiy et al to Theano and Lasagne. It contains both
 FlowNetS and FlowNetC models and a port of the correlation layer.
 
+Ground Truth                                  | FlowNetS                                      | FlowNetC
+----------------------------------------------|-----------------------------------------------|----------------------------------------------------
+![img](results/GroundTruth/0000008-gt.flo.png)| ![img](results/FlowNetS/0000008_flow1.flo.png)| ![img](results/FlowNetC/0000008_flow1.flo.png)
+
 ### Requirements
 
 * flownet-caffe (for the weight conversion script only). Sample
