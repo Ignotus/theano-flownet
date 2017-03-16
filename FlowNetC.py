@@ -25,11 +25,11 @@ class CorrelationLayer(MergeLayer):
         super(CorrelationLayer, self).__init__(
             [first_layer, second_layer], **kwargs)
 
-        self.pad_size = 20
-        self.kernel_size = 1
-        self.stride1 = 1
-        self.stride2 = 2
-        self.max_displacement = 20
+        self.pad_size = pad_size
+        self.kernel_size = kernel_size
+        self.stride1 = stride1
+        self.stride2 = stride2
+        self.max_displacement = max_displacement
         self.bottom_shape = lasagne.layers.get_output_shape(first_layer)
 
     def get_output_shape_for(self, input_shapes):
