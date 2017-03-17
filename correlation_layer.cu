@@ -311,9 +311,9 @@ int APPLY_SPECIFIC(Forward_gpu)(
   CudaNdarray_prep_output(rbot0, 4, dims);
   CudaNdarray_prep_output(rbot1, 4, dims);
 
-  cudaMemset((*out)->devdata, Dtype(0.), CudaNdarray_SIZE(*out));
-  cudaMemset((*rbot0)->devdata, Dtype(0.), CudaNdarray_SIZE(*rbot0));
-  cudaMemset((*rbot1)->devdata, Dtype(0.), CudaNdarray_SIZE(*rbot1));
+  cudaMemset((*out)->devdata, Dtype(0.), CudaNdarray_SIZE(*out) * sizeof(Dtype));
+  cudaMemset((*rbot0)->devdata, Dtype(0.), CudaNdarray_SIZE(*rbot0) * sizeof(Dtype));
+  cudaMemset((*rbot1)->devdata, Dtype(0.), CudaNdarray_SIZE(*rbot1) * sizeof(Dtype));
 
   // Those capitalized parameters are taken from theano
   const int topcount = TOP_WIDTH * TOP_HEIGHT * TOP_CHANNELS;
@@ -365,8 +365,8 @@ int APPLY_SPECIFIC(Backward_gpu)(
   CudaNdarray_prep_output(bottom0_grad, 4, CudaNdarray_DIMS(bottom0));
   CudaNdarray_prep_output(bottom1_grad, 4, CudaNdarray_DIMS(bottom1));
 
-  cudaMemset((*bottom0_grad)->devdata, Dtype(0.), count);
-  cudaMemset((*bottom1_grad)->devdata, Dtype(0.), count);
+  cudaMemset((*bottom0_grad)->devdata, Dtype(0.), count * sizeof(Dtype));
+  cudaMemset((*bottom1_grad)->devdata, Dtype(0.), count * sizeof(Dtype));
 
   // Get top diff, compute bottom diff
   const Dtype* top_diff = out_grad->devdata;
