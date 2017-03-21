@@ -29,3 +29,6 @@ caffemodel and prototxt files should be placed in the model subdirectory.
 python FlowNetS.py
 python FlowNetC.py
 ```
+### License
+
+The source code is distributed under the [MIT license](LICENSE). Please refer to us if you find this code useful.
