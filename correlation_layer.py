@@ -39,7 +39,7 @@ class CorrelationBaseOp(GpuOp, COp):
     assert self.top_width >= 1
     assert self.top_height >= 1
 
-    self.neighborhood_grid_radius = self.max_displacement / self.stride2
+    self.neighborhood_grid_radius = self.max_displacement // self.stride2
     self.neighborhood_grid_width = self.neighborhood_grid_radius * 2 + 1
 
     self.top_channels = self.neighborhood_grid_width ** 2
