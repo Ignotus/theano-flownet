@@ -10,8 +10,7 @@ Ground Truth                                  | FlowNetS                        
 
 ### Requirements
 
-* flownet-caffe (for the weight conversion script only). Sample
-[Makefile.config](Makefile.config) is provided.
+* flownet-caffe (for the weight conversion script only).
 * Theano 0.8.2
 * Lasagne
 * numpy
@@ -21,7 +20,7 @@ visualization from *.flo outputs
 ### Setup
 
 `caffe_to_numpy.py` script can be used to convert caffe models to the npz format.
-caffemodel and prototxt files should be placed in the model subdirectory.
+caffemodel and prototxt files should be placed in the model subdirectory. Alternatively you can download weights from [Google Drive](https://drive.google.com/file/d/0B_f8lHMYsLosSlBodTdSNlZ3TEk/view?usp=sharing).
 
 ### Running
 
